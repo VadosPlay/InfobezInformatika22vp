@@ -1,22 +1,24 @@
 const express = require("express");
-const fetch = require("node-fetch");
-const cors = require("cors");
 const path = require("path");
+const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Разрешаем запросы с фронтенда
 app.use(cors());
 app.use(express.json());
-app.use(express.static(__dirname)); // отдаёт index.html, script.js, style.css и др.
 
-// Чтобы точно отдать index.html при GET /
+// Отдаём все статические файлы (index.html, script.js, style.css)
+app.use(express.static(__dirname));
+
+// Чтобы точно отдать index.html при заходе на /
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// Endpoint для VirusTotal
+// Endpoint для VirusTotal (пример)
 app.post("/vt/scan", async (req, res) => {
   try {
     const { url } = req.body;
@@ -25,22 +27,19 @@ app.post("/vt/scan", async (req, res) => {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
     if (!apiKey) return res.status(500).json({ error: "API ключ не настроен" });
 
+    const fetch = require("node-fetch");
     const vtResponse = await fetch("https://www.virustotal.com/api/v3/urls", {
       method: "POST",
-      headers: {
-        "x-apikey": apiKey,
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
+      headers: { "x-apikey": apiKey, "Content-Type": "application/x-www-form-urlencoded" },
       body: `url=${encodeURIComponent(url)}`
     });
 
     const json = await vtResponse.json();
     const scanId = json.data.id;
 
-    const reportResponse = await fetch(
-      `https://www.virustotal.com/api/v3/analyses/${scanId}`,
-      { headers: { "x-apikey": apiKey } }
-    );
+    const reportResponse = await fetch(`https://www.virustotal.com/api/v3/analyses/${scanId}`, {
+      headers: { "x-apikey": apiKey }
+    });
 
     const reportJson = await reportResponse.json();
     const stats = reportJson.data.attributes.stats;
@@ -57,4 +56,5 @@ app.post("/vt/scan", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+// Запуск сервера
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
