@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const fetch = require("node-fetch");
 const cors = require("cors");
@@ -10,23 +9,22 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname))); // отдаём index.html и всё рядом
+app.use(express.static(__dirname)); // отдаёт index.html, script.js, style.css и др.
 
-// Endpoint для VirusTotal проверки
+// Чтобы точно отдать index.html при GET /
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Endpoint для VirusTotal
 app.post("/vt/scan", async (req, res) => {
   try {
     const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: "URL отсутствует" });
-    }
+    if (!url) return res.status(400).json({ error: "URL отсутствует" });
 
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "API ключ не настроен на сервере" });
-    }
+    if (!apiKey) return res.status(500).json({ error: "API ключ не настроен" });
 
-    // Отправляем URL в VirusTotal
     const vtResponse = await fetch("https://www.virustotal.com/api/v3/urls", {
       method: "POST",
       headers: {
@@ -37,16 +35,11 @@ app.post("/vt/scan", async (req, res) => {
     });
 
     const json = await vtResponse.json();
-
-    // получаем id для проверки отчёта
     const scanId = json.data.id;
 
-    // Запрашиваем результат проверки
     const reportResponse = await fetch(
       `https://www.virustotal.com/api/v3/analyses/${scanId}`,
-      {
-        headers: { "x-apikey": apiKey }
-      }
+      { headers: { "x-apikey": apiKey } }
     );
 
     const reportJson = await reportResponse.json();
@@ -64,7 +57,4 @@ app.post("/vt/scan", async (req, res) => {
   }
 });
 
-// Запуск сервера
-app.listen(PORT, () => {
-  console.log(`Server started on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
